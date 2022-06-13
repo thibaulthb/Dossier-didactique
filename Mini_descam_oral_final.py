@@ -55,7 +55,7 @@ def dp_std(z,Gamma):
     return -p0*(Gamma/Te0)*(M*grav/(Gamma*R))*(1-Gamma/Te0*z)**(M*grav/(Gamma*R)-1)
 
 def theta(T,p):
-    return T*(p0/p)**(R/Cp)
+    return T*(p0/p)**(R/(Cp*M))
 
 def rho(z,T,r,p):
     return p*M/(R*T)*(1+r)/(1+M/Mw*r)
@@ -210,7 +210,10 @@ radio = RadioButtons(rax, ("Création du profil", "Parcelle d'air sec",
                            "Condensation bridée","Condensation subdivisée"))
 radio.set_active(0)
 mode=get_mode(radio.value_selected)
-print(mode)
+rax = plt.axes([.7, 0.46, 0.14, 0.15])
+radio2 = RadioButtons(rax, ("Température","Température potentielle"))
+radio2.set_active(0)
+temperature=radio2.value_selected
 
 axT = plt.axes([0.7, 0.39, .2, 0.03], facecolor=axcolor)
 sl_axT = Slider(axT, '$T_{ini}$(K)', 299, 304, valinit=303, valstep=0.1)  
@@ -242,10 +245,12 @@ Mini_descam(pas_temps, T_ini, RH_ini, Gamma,mode,condrate,condmax)
 altitude=np.linspace(0,4000,101)
 
 # Tracé du profil de température
-ax_T.plot(T_std(altitude,Gamma),altitude/1000,label="$T_{env}$")
-ax_T.plot(theta(T_std(altitude,Gamma),p_std(altitude,Gamma)),altitude/1000,label=r"$\theta_{env}$")
-ax_T.plot(T_dyn[0:nmax],alt_dyn[0:nmax]/1000,'g-',label="$T_{parc}$")
-ax_T.plot(theta(T_dyn[0:nmax]*(1+1.608*r_dyn[0:nmax])/(1+r_dyn[0:nmax]),p_std(alt_dyn[0:nmax],Gamma)),alt_dyn[0:nmax]/1000,'r-',label=r"$\theta_{parc}$")
+if temperature=="Température":
+    ax_T.plot(T_std(altitude,Gamma),altitude/1000,label="$T_{env}$")
+    ax_T.plot(T_dyn[0:nmax],alt_dyn[0:nmax]/1000,'g-',label="$T_{parc}$")
+else:
+    ax_T.plot(theta(T_std(altitude,Gamma),p_std(altitude,Gamma)),altitude/1000,label=r"$\theta_{env}$")
+    ax_T.plot(theta(T_dyn[0:nmax]*(1+1.608*r_dyn[0:nmax])/(1+r_dyn[0:nmax]),p_std(alt_dyn[0:nmax],Gamma)),alt_dyn[0:nmax]/1000,'g-',label=r"$\theta_{parc}$")
 ax_T.legend(bbox_to_anchor=(.99, .99),loc='upper right', borderaxespad=0.)
 
 ax_T.axis([275, 305, 0, 4])                     # limite des axes (xmin,xmax,ymin,ymax)
@@ -315,10 +320,20 @@ def update(val):
     temps = np.arange(0,nmax*pas_temps,pas_temps)
     Mini_descam(pas_temps, T_ini, RH_ini, Gamma, get_mode(radio.value_selected),condrate,condmax)
 
-    ax_T.lines[0].set_xdata(T_std(altitude,Gamma))
-    ax_T.lines[1].set_xdata(theta(T_std(altitude,Gamma),p_std(altitude,Gamma)))
-    ax_T.lines[2].set_data(T_dyn[0:nmax],alt_dyn[0:nmax]/1000)
-    ax_T.lines[3].set_data(theta(T_dyn[0:nmax]*(1+1.608*r_dyn[0:nmax])/(1+r_dyn[0:nmax]),p_std(alt_dyn[0:nmax],Gamma)),alt_dyn[0:nmax]/1000)
+    if radio2.value_selected == "Température":
+        ax_T.lines[0].set_xdata(T_std(altitude,Gamma))
+        ax_T.lines[0].set_label(r"$T_{env}$")
+        ax_T.lines[1].set_data(T_dyn[0:nmax],alt_dyn[0:nmax]/1000)
+        ax_T.lines[1].set_label(r"$T_{parc}$")
+        ax_T.set_xlim([275, 305])
+    else:
+        ax_T.lines[0].set_xdata(theta(T_std(altitude,Gamma),p_std(altitude,Gamma)))
+        ax_T.lines[0].set_label(r"$\theta_{env}$")
+        ax_T.lines[1].set_data(theta(T_dyn[0:nmax]*(1+1.608*r_dyn[0:nmax])/(1+r_dyn[0:nmax]),p_std(alt_dyn[0:nmax],Gamma)),alt_dyn[0:nmax]/1000)
+        ax_T.lines[1].set_label(r"$\theta_{parc}$")
+        ax_T.set_xlim([295, 325])
+    ax_T.legend(bbox_to_anchor=(.99, .99),loc='upper right', borderaxespad=0.)
+
     
     ax_p.lines[0].set_xdata(p_std(altitude,Gamma)/100)
     
@@ -339,6 +354,7 @@ sl_axcond.on_changed(update)
 sl_axcondmax.on_changed(update)
 
 radio.on_clicked(update)
+radio2.on_clicked(update)
 
 # ## Definition d'un bouton reset
 # axcolor = 'lightgoldenrodyellow'                            # couleur des barres
